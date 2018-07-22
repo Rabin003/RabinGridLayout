@@ -1,6 +1,7 @@
 package com.example.ra.webview;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -18,7 +19,7 @@ import android.widget.ProgressBar;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
-public class MainActivity extends AppCompatActivity {
+ public class MainActivity extends AppCompatActivity {
 
     private String postUrl = "https://api.androidhive.info/webview/index.html";
     private WebView webView;
@@ -64,7 +65,9 @@ public class MainActivity extends AppCompatActivity {
                     startActivity(intent);
                 } else {
                     // launch in-app browser i.e BrowserActivity
-                    openInAppBrowser(url);
+                    Intent intent = new Intent(MainActivity.this, BrowserActivity.class);
+                    intent.putExtra("url", url);
+                    startActivity(intent);
                 }
 
                 return true;
