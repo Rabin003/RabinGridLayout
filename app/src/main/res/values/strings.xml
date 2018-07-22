@@ -1,3 +1,7 @@
 <resources>
+
     <string name="app_name">WebView</string>
+    <string name="action_bookmark"> BookMark</string>
+    <string name="action_back">ActionBack</string>
+    <string name="action_forward">ActionBack</string>
 </resources>

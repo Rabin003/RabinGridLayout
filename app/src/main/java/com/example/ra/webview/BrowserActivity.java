@@ -1,15 +1,20 @@
 package com.example.ra.webview;
+
 import android.content.Context;
-import android.content.Intent;
+import android.graphics.Bitmap;
+import android.os.Bundle;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ImageView;
@@ -18,13 +23,12 @@ import android.widget.ProgressBar;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
-public class MainActivity extends AppCompatActivity {
+public class BrowserActivity extends AppCompatActivity {
 
-    private String postUrl = "https://api.androidhive.info/webview/index.html";
+    private String url;
     private WebView webView;
     private ProgressBar progressBar;
     private float m_downX;
-    private ImageView imgHeader;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,47 +37,52 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setTitle("");
+
+        url = getIntent().getStringExtra("url");
+        if (TextUtils.isEmpty(url)){
+            finish();
+        }
+
+
 
         webView = (WebView) findViewById(R.id.webView);
         progressBar = (ProgressBar) findViewById(R.id.progressBar);
-        imgHeader = (ImageView) findViewById(R.id.backdrop);
-
-        if (!TextUtils.isEmpty(getIntent().getStringExtra("postUrl"))) {
-            postUrl = getIntent().getStringExtra("postUrl");
-        }
 
         initWebView();
-        initCollapsingToolbar();
-        renderPost();
+        webView.loadUrl(url);
+
+
+
     }
 
     private void initWebView() {
         webView.setWebChromeClient(new MyWebChromeClient(this));
         webView.setWebViewClient(new WebViewClient() {
-
+            @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                progressBar.setVisibility(View.VISIBLE);
+                invalidateOptionsMenu();
+            }
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                /**
-                 * Check for the url, if the url is from same domain
-                 * open the url in the same activity as new intent
-                 * else pass the url to browser activity
-                 * */
-                if (Utils.isSameDomain(postUrl, url)) {
-                    Intent intent = new Intent(MainActivity.this, MainActivity.class);
-                    intent.putExtra("postUrl", url);
-                    startActivity(intent);
-                } else {
-                    // launch in-app browser i.e BrowserActivity
-                    openInAppBrowser(url);
-                }
-
+                webView.loadUrl(url);
                 return true;
             }
-
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 progressBar.setVisibility(View.GONE);
+                invalidateOptionsMenu();
+            }
+
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(view, request, error);
+                progressBar.setVisibility(View.GONE);
+                invalidateOptionsMenu();
             }
         });
         webView.clearCache(true);
@@ -102,7 +111,6 @@ public class MainActivity extends AppCompatActivity {
                         event.setLocation(m_downX, event.getY());
                     }
                     break;
-
                 }
 
                 return false;
@@ -110,53 +118,68 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void renderPost() {
-        webView.loadUrl(postUrl);
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.browser, menu);
+
+        return super.onCreateOptionsMenu(menu);
     }
 
-    private void openInAppBrowser(String url) {
-        Intent intent = new Intent(MainActivity.this, BrowserActivity.class);
-        intent.putExtra("url", url);
-        startActivity(intent);
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+
+        if (!webView.canGoBack()) {
+            menu.getItem(0).setEnabled(false);
+            menu.getItem(0).getIcon().setAlpha(130);
+        } else {
+            menu.getItem(0).setEnabled(true);
+            menu.getItem(0).getIcon().setAlpha(255);
+        }
+
+        if (!webView.canGoForward()) {
+            menu.getItem(1).setEnabled(false);
+            menu.getItem(1).getIcon().setAlpha(130);
+        } else {
+            menu.getItem(1).setEnabled(true);
+            menu.getItem(1).getIcon().setAlpha(255);
+        }
+
+        return true;
     }
 
-    /**
-     * Initializing collapsing toolbar
-     * Will show and hide the toolbar txtPostTitle on scroll
-     */
-    private void initCollapsingToolbar() {
-        final CollapsingToolbarLayout collapsingToolbar =
-                (CollapsingToolbarLayout) findViewById(R.id.collapsing_toolbar);
-        collapsingToolbar.setTitle(" ");
-        AppBarLayout appBarLayout = (AppBarLayout) findViewById(R.id.appbar);
-        appBarLayout.setExpanded(true);
 
-        // hiding & showing the txtPostTitle when toolbar expanded & collapsed
-        appBarLayout.addOnOffsetChangedListener(new AppBarLayout.OnOffsetChangedListener() {
-            boolean isShow = false;
-            int scrollRange = -1;
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
 
-            @Override
-            public void onOffsetChanged(AppBarLayout appBarLayout, int verticalOffset) {
-                if (scrollRange == -1) {
-                    scrollRange = appBarLayout.getTotalScrollRange();
-                }
-                if (scrollRange + verticalOffset == 0) {
-                    collapsingToolbar.setTitle("Web View");
-                    isShow = true;
-                } else if (isShow) {
-                    collapsingToolbar.setTitle(" ");
-                    isShow = false;
-                }
-            }
-        });
+        if (item.getItemId() == android.R.id.home) {
+            finish();
+        }
 
-        // loading toolbar header image
-        Glide.with(getApplicationContext()).load("https://api.androidhive.info/webview/nougat.jpg")
-                .thumbnail(0.5f)
-                .crossFade()
-                .diskCacheStrategy(DiskCacheStrategy.ALL)
-                .into(imgHeader);
+        if (item.getItemId() == R.id.action_back) {
+            back();
+        }
+
+        if (item.getItemId() == R.id.action_forward) {
+            forward();
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void back() {
+        if (webView.canGoBack()) {
+            webView.goBack();
+        }
+    }
+
+    private void forward() {
+        if (webView.canGoForward()) {
+            webView.goForward();
+        }
     }
 
     private class MyWebChromeClient extends WebChromeClient {
@@ -166,5 +189,7 @@ public class MainActivity extends AppCompatActivity {
             super();
             this.context = context;
         }
+
+
     }
 }
